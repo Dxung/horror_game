@@ -20,10 +20,11 @@ public class PlayerMovement : MonoBehaviour
 
     
     [Header("Input Processes")]
-    private Vector2 _currentInputBeforeSmooth;
-    private Vector2 _currentInputAfterSmooth;
+    private Vector2 _rawCurrentInput;
+    private Vector2 _smoothInputToApplyThisTime;
     private Vector2 _smoothInputVelocity;
     [SerializeField] private float _smoothInputSpeed=.2f;
+
 
     private void Awake()
     {
@@ -38,6 +39,8 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
+        //calculate move direction  --> check gravity & change direction.y --> apply move with calculated direction
+        //HandleMovementInput()     --> HandleGravity()                    --> ApplyFinalMovement()
         if (_canMove)
         {
             HandleMovementInput();
@@ -48,15 +51,16 @@ public class PlayerMovement : MonoBehaviour
     private void HandleMovementInput()
     {
 
-        _currentInputBeforeSmooth = _playerInputController.Player.Movement.ReadValue<Vector2>();
+        // _smoothInputToApplyThisTime : the vector2 "position" that character move the last time
+        // _rawCurrentInput            : the vector2 "position" that character should move to this time
 
-        _currentInputAfterSmooth = Vector2.SmoothDamp(_currentInputAfterSmooth, _currentInputBeforeSmooth, ref _smoothInputVelocity, _smoothInputSpeed);
+        _rawCurrentInput = _playerInputController.Player.Movement.ReadValue<Vector2>();
+        _smoothInputToApplyThisTime = Vector2.SmoothDamp(_smoothInputToApplyThisTime, _rawCurrentInput, ref _smoothInputVelocity, _smoothInputSpeed);
 
-        Vector2 inputNormalized = _currentInputAfterSmooth.normalized;
         float moveDirectionY = _moveDirection.y;
 
         //change player's moving direction from local to world 
-        _moveDirection = (transform.TransformDirection(Vector3.forward) * inputNormalized.y) + (transform.TransformDirection(Vector3.right) * inputNormalized.x);
+        _moveDirection = (transform.TransformDirection(Vector3.forward) * _smoothInputToApplyThisTime.y) + (transform.TransformDirection(Vector3.right) * _smoothInputToApplyThisTime.x);
         _moveDirection.y = moveDirectionY;
 
     }
@@ -80,10 +84,17 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    //Apply Jump
+    public void JumpButtonPressed(InputAction.CallbackContext context)
+    {
+        Debug.Log("jump");
+    }
+
     //enable/disable Input System
     private void OnEnable()
     {
         _playerInputController.Enable();
+        _playerInputController.Player.Jump.started += JumpButtonPressed;
     }
 
 
@@ -102,5 +113,7 @@ public class PlayerMovement : MonoBehaviour
     {
         _canMove = canPlayerMove;
     }
+
+    
     
 }
